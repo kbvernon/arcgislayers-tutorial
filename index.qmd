@@ -67,9 +67,11 @@ url_parse(url)
 
 ```{r}
 #| label: httr2-request
-req <- request(url)
+req <- url |>
+  request() |>
+  req_url_query(where = "NAME='Utah'", fields = "'NAME'")
 
-req |> req_url_query(where = "NAME='Utah'", fields = "NAME")
+url_parse(req[["url"]])
 ```
 
 ## [`arcgislayers`]{.big-font} {.center}
@@ -89,53 +91,56 @@ Platform.
 
 ## AGOL query in the browser
 
-Get US Census TIGER/line data
-
 ![](figures/agol-query-gui.png){width="85%"}
 
-## AGOL query in the browser
-
-Return GeoJSON
+## Return JSON
 
 ```json
 {
-  "type": "FeatureCollection",
-  "features": [
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Polygon",
-        "coordinates": [
-          [
-            [-111.737567999652, 40.5282020000119],
-            ...,
-            [-111.737567999652, 40.5282020000119]
-          ]
-        ]
-      },
-      "properties": {
-        "NAME": "Utah"
-      }
-    }
-  ]
+    "displayFieldName": "BASENAME",
+    "fieldAliases": {
+        "NAME": "NAME"
+    },
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+        "wkid": 102100,
+        "latestWkid": 3857
+    },
+    "fields": [...],
+    "features": [
+        {
+            "attributes": {
+                "NAME": "Utah"
+            },
+            "geometry": {...}
+        }
+    ]
 }
 ```
 
-## AGOL query in the browser
+## {.center}
+[AGOL query animation]{.menu-title style="display: none;"}
 
-Read to simple feature
+::: {style="width: 75%; margin: 0 auto;"}
+![](figures/agol-query-gui.gif){width=100%}
+:::
+
+## Serialize into simple feature
 
 ```r
 library(sf)
 
-long_geojson_string <- '({"type":"FeatureCollection", ... "NAME":"Utah"}}]}'
+utah <- read_sf("utah.json")
 
-utah <- read_sf(long_geojson_string)
+utah[c("STATE", "NAME")]
+#> Simple feature collection with 1 feature and 2 fields
+#> Geometry type: POLYGON
+#> Dimension:     XY
+#> Bounding box:  xmin: -12696310 ymin: 4438780 xmax: -12138450 ymax: 5161234
+#> Projected CRS: WGS 84 / Pseudo-Mercator
+#>   STATE NAME                       geometry
+#> 1    49 Utah POLYGON ((-12412992 5160912...
 ```
-
-## {.center}
-
-![](figures/agol-query-gui.gif){fig-align="center"}
 
 ## `arcgislayers` in R
 
@@ -150,12 +155,8 @@ service <- arc_open(url)
 
 # write and execute http request
 utah <- arc_select(service, where = "NAME='Utah'")
-```
 
-## Querying a `<FeatureLayer>` returns `sf`
-
-```{r}
-#| label: arcgislayers-return
+# querying a <FeatureLayer> returns sf
 utah[c("STATE", "NAME")]
 ```
 
@@ -171,12 +172,12 @@ utah[c("STATE", "NAME")]
 
 ## Only the `source()` is real!
 
-{{< iconify bi:filetype-json >}} salt-lake.json ~ 462 KB  
+{{< iconify bi:filetype-json >}} utah.json ~ 1070 KB  
 
-{{< iconify bi:file-text >}} salt-lake.R ~ 0.3 KB  
+{{< iconify bi:file-text >}} utah.R ~ 0.3 KB  
 
 But sharing the R script is basically sharing the data,  
-since getting the data is as simple as `source("salt-lake.R")`*.
+since getting the data is as simple as `source("utah.R")`*.
 
 ::: {.absolute bottom=10 style="color: #829399; font-size: 22px;"}
 \* There are always trade-offs...
@@ -190,21 +191,26 @@ and then sends that request to the service endpoint.
 
 ## `fields` for column selection
 
-```{r}
+```r
 # available fields at this service endpoint
 list_fields(service)[["name"]]
+#>  [1] "MTFCC"      "OID"        "GEOID"      "STATE"      "STATENS"   
+#>  [6] "BASENAME"   "NAME"       "LSADC"      "FUNCSTAT"   "AREALAND"  
+#> [11] "AREAWATER"  "REGION"     "DIVISION"   "STUSAB"     "STGEOMETRY"
+#> [16] "CENTLAT"    "CENTLON"    "INTPTLAT"   "INTPTLON"   "OBJECTID"
 
 states <- arc_select(service, fields = "NAME")
 names(states)
+#> [1] "NAME"     "geometry"
 ```
 
 ## `where` for SQL queries
 
-```{r}
-#| label: arc-select-where
+```r
 intermountain <- arc_select(service, where = "NAME IN ('Utah', 'Nevada')")
 
 intermountain[["NAME"]]
+#> [1] "Nevada" "Utah"
 ```
 
 ## `crs` for return spatial reference
@@ -220,11 +226,12 @@ st_crs(states)$epsg
 
 ## `geometry` for returning geometry
 
-```{r}
-#| label: arc-select-geometry
+```r
 state_attributes <- arc_select(service, geometry = FALSE)
 
-state_attributes[c("STATE", "NAME")]
+# are all geometries empty?
+all(st_is_empty(state_attributes))
+#> [1] TRUE
 ```
 
 ## `filter_geom` for spatial filters
@@ -238,8 +245,6 @@ wbd_url <- file.path(
 )
 
 wbd <- arc_open(wbd_url)
-
-utah <- states |> subset(NAME == "Utah")
 
 # basins (huc6) of utah
 basins <- arc_select(wbd, filter_geom = st_geometry(utah))
