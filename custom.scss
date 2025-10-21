@@ -1,0 +1,29 @@
+/*-- scss:defaults --*/
+$soft-white: #fdfdfd;
+$presentation-font-size-root: 32px;
+$presentation-line-height: 1.2;
+
+/*-- scss:rules --*/
+.kiss {
+    color: $soft-white;
+
+    a {
+        color: $soft-white !important;
+    }
+
+    a:hover {
+        color: #42affa !important;
+    }
+}
+
+.soft-white {
+    color: $soft-white !important;
+}
+
+.big-font {
+    font-size: 4rem;
+}
+
+.georgia {
+    font-family: Georgia !important;
+}

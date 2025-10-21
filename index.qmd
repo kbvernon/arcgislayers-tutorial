@@ -1,0 +1,263 @@
+---
+format: 
+  revealjs:
+    theme: [default, custom.scss]
+    highlight-style: a11y
+    code-line-numbers: false
+    slide-number: true
+execute: 
+  echo: true
+knitr:
+  opts_chunk: 
+    collapse: true
+    comment: "#>" 
+---
+
+```{r}
+#| echo: false
+#| include: false
+library(sf)
+```
+
+## {.kiss data-background-color="#0c0c0c"}
+
+::: {.absolute right=0 top=100 style="width: 65%; text-align: right;"}
+[Working with REST APIs to access spatial data]{.georgia style="font-size: 50px; font-weight: 600;"}  
+SUDS Workshop
+:::
+
+![](figures/ace-frehley.png){.absolute bottom=10 left=0 width="8in"}
+
+::: {.absolute right=0 bottom=0 style="width: 60%; text-align: right;"}
+2025-10-21  
+[{{< iconify bi:github >}} kbvernon/arcgislayers-tutorial](https://github.com/kbvernon/arcgislayers-tutorial)  
+[{{< iconify bi:music-note-beamed >}} New York Groove](https://www.youtube.com/watch?v=DXeeY9D9u94&list=RDDXeeY9D9u94&start_radio=1)
+:::
+
+## [`arcgislayers`]{.big-font} {.center}
+
+> the core data access package in the R-ArcGIS Bridge, providing [**a unified interface for working with ArcGIS data services**]{style="color: #06287e;"}. As part of the arcgis metapackage, it enables seamless integration between R and the ArcGIS Web GIS ecosystem, including ArcGIS Online, Enterprise, and Location Platform.
+
+{{< iconify bi:link-45deg >}} <https://r.esri.com/arcgislayers/>
+
+{{< iconify bi:person >}} [Josiah Parry](https://github.com/JosiahParry), Senior Product Engineer @ Esri
+
+
+## [Intuition Pumps]{.soft-white .georgia .big-font} {.center data-background-color="#0c0c0c" }
+
+## AGOL query in the browser
+
+Get US Census TIGER/line data
+
+![](figures/agol-query-gui.png){width="85%"}
+
+## AGOL query in the browser
+
+Return GeoJSON
+
+```json
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-111.737567999652, 40.5282020000119],
+            ...,
+            [-111.737567999652, 40.5282020000119]
+          ]
+        ]
+      },
+      "properties": {
+        "NAME": "Salt Lake County"
+      }
+    }
+  ]
+}
+```
+
+## AGOL query in the browser
+
+Read to simple feature
+
+```r
+library(sf)
+
+long_geojson_string <- '({"type":"FeatureCollection", ... "NAME":"Salt Lake County"}}]}'
+
+slco <- read_sf(long_geojson_string)
+```
+
+## {.center}
+
+![](figures/agol-query-gui.gif){fig-align="center"}
+
+## `arcgislayers` in R
+
+Get US Census TIGER/line data
+
+```{r}
+library(arcgislayers)
+
+# connect to a map service
+url <- file.path(
+  "https://tigerweb.geo.census.gov",
+  "arcgis/rest/services",
+  "TIGERweb/State_County/MapServer/1"
+)
+
+service <- arc_open(url)
+
+# write and execute http request
+slco <- arc_select(service, where = "BASENAME='Salt Lake'")
+```
+
+## `arcgislayers` returns `sf`
+
+```{r}
+slco[c("STATE", "BASENAME")]
+```
+
+## [Why care?]{.soft-white .georgia .big-font} {.center data-background-color="#0c0c0c" }
+
+## Focus on remote access...
+
+1. makes data used for research more accessible,
+2. shifts effort from data management to data processing,
+3. reduces the need for costly data duplication, 
+4. supports collaborative research, and 
+5. promotes reproducibility.
+
+## Only the `source()` is real!
+
+{{< iconify bi:filetype-json >}} salt-lake.json ~ 462 KB  
+
+{{< iconify bi:file-text >}} salt-lake.R ~ 0.3 KB  
+
+But sharing the R script is basically sharing the data,  
+since getting the data is as simple as `source("salt-lake.R")`*.
+
+::: {.absolute bottom=10 style="color: #829399; font-size: 22px;"}
+\* There are always trade-offs...
+:::
+
+## But also money!
+
+## [HTTP requests?]{.soft-white .georgia .big-font} {.center data-background-color="#0c0c0c" }
+
+## URL components
+
+```{r}
+library(httr2)
+
+url <- file.path(
+  "https://tigerweb.geo.census.gov",
+  "arcgis/rest/services",
+  "TIGERweb/State_County/MapServer/0"
+)
+
+url_parse(url)
+```
+
+## AGOL specifics
+
+```{r}
+service <- arc_open(url)
+service
+```
+
+## Building queries
+
+```{r}
+req <- request(service[["url"]])
+
+# append queries to endpoint url
+req |> req_url_query(where = "NAME='Utah'", fields = "NAME")
+
+# insert queries into request body
+req |> req_body_form(where = "NAME='Utah'", fields = "NAME")
+```
+
+When we pass the service information to `arc_select()` with arguments, it helps 
+us build a url query string with `req_url_query()` and then sends that request 
+to the service endpoint.
+
+## [Arguments to `arc_select()`]{.soft-white .georgia .big-font} {.center data-background-color="#0c0c0c" }
+
+## `fields` for column selection
+
+```{r}
+# available fields at this service endpoint
+list_fields(service)[["name"]]
+
+states <- arc_select(service, fields = "NAME")
+names(states)
+```
+
+## `where` for SQL queries
+
+```{r}
+intermountain <- arc_select(service, where = "NAME IN ('Utah', 'Nevada')")
+
+intermountain[["NAME"]]
+```
+
+## `crs` for return spatial reference
+
+```r
+library(sf)
+
+states <- arc_select(service, crs = 26912)
+
+st_crs(states)$epsg
+#> [1] 26912
+```
+
+## `geometry` for returning geometry
+
+```{r}
+state_attributes <- arc_select(service, geometry = FALSE)
+
+state_attributes[c("STATE", "NAME")]
+```
+
+## `filter_geom` for spatial filters
+
+```{r}
+# basins (huc6) of utah
+wbd_url <- file.path(
+  "https://hydrowfs.nationalmap.gov",
+  "arcgis/rest/services",
+  "wbd/MapServer/3"
+)
+
+# watershed boundaries database service
+wbd <- arc_open(wbd_url)
+
+utah <- states |> subset(NAME == "Utah")
+
+basins <- arc_select(wbd, filter_geom = st_geometry(utah))
+
+basins[["name"]]
+```
+
+## `predicate` for spatial relation
+
+```r
+# intersects is the default
+basins <- arc_select(
+  wbd,
+  filter_geom = st_geometry(utah),
+  predicate = "within"
+)
+
+basins[["name"]]
+#> [1] "Jordan"
+```
+
+::: {.absolute bottom=10 style="color: #829399; font-size: 22px;"}
+\* This actually doesn't work. There's a bug in how the predicate is applied.
+:::

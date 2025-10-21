@@ -1,0 +1,1 @@
+A short presentation for the Utah Spatial Data Science group explaining how to use the `arcgislayers` R package to collect spatial data from AGOL REST APIs.
