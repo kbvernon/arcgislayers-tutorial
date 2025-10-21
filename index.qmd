@@ -14,6 +14,7 @@ knitr:
 ---
 
 ```{r}
+#| label: sf-library
 #| echo: false
 #| include: false
 library(sf)
@@ -26,7 +27,7 @@ library(sf)
 SUDS Workshop
 :::
 
-![](figures/ace-frehley.png){.absolute bottom=10 left=0 width="8in"}
+![](figures/ace-frehley.png){.absolute bottom=10 left=0 width=8in}
 
 ::: {.absolute right=0 bottom=0 style="width: 60%; text-align: right;"}
 2025-10-21  
@@ -34,16 +35,57 @@ SUDS Workshop
 [{{< iconify bi:music-note-beamed >}} New York Groove](https://www.youtube.com/watch?v=DXeeY9D9u94&list=RDDXeeY9D9u94&start_radio=1)
 :::
 
+# REST API? {.center data-background-color="#0c0c0c"}
+
+## HTTP methods
+
+::: {style="width: 70%; margin: 0 auto 0 0;"}
+![](figures/http.svg){width=100%}
+:::
+
+## Today's focus
+
+::: {style="width: 70%; margin: 0 auto 0 0;"}
+![](figures/http-todays-focus.svg){width=100%}
+:::
+
+## URL components
+
+```{r}
+#| label: httr2-url-components
+library(httr2)
+
+url <- file.path(
+  "https://tigerweb.geo.census.gov",
+  "arcgis/rest/services/TIGERweb/State_County/MapServer/0"
+)
+
+url_parse(url)
+```
+
+## Building queries
+
+```{r}
+#| label: httr2-request
+req <- request(url)
+
+req |> req_url_query(where = "NAME='Utah'", fields = "NAME")
+```
+
 ## [`arcgislayers`]{.big-font} {.center}
 
-> the core data access package in the R-ArcGIS Bridge, providing [**a unified interface for working with ArcGIS data services**]{style="color: #06287e;"}. As part of the arcgis metapackage, it enables seamless integration between R and the ArcGIS Web GIS ecosystem, including ArcGIS Online, Enterprise, and Location Platform.
+> the core data access package in the R-ArcGIS Bridge, providing [**a unified 
+interface for working with ArcGIS data services**]{style="color: #06287e;"}. 
+As part of the arcgis metapackage, it enables seamless integration between R and 
+the ArcGIS Web GIS ecosystem, including ArcGIS Online, Enterprise, and Location 
+Platform.
 
 {{< iconify bi:link-45deg >}} <https://r.esri.com/arcgislayers/>
 
 {{< iconify bi:person >}} [Josiah Parry](https://github.com/JosiahParry), Senior Product Engineer @ Esri
 
 
-## [Intuition Pumps]{.soft-white .georgia .big-font} {.center data-background-color="#0c0c0c" }
+# [Intuition Pumps]{.soft-white .georgia .big-font} {.center data-background-color="#0c0c0c" }
 
 ## AGOL query in the browser
 
@@ -72,7 +114,7 @@ Return GeoJSON
         ]
       },
       "properties": {
-        "NAME": "Salt Lake County"
+        "NAME": "Utah"
       }
     }
   ]
@@ -86,9 +128,9 @@ Read to simple feature
 ```r
 library(sf)
 
-long_geojson_string <- '({"type":"FeatureCollection", ... "NAME":"Salt Lake County"}}]}'
+long_geojson_string <- '({"type":"FeatureCollection", ... "NAME":"Utah"}}]}'
 
-slco <- read_sf(long_geojson_string)
+utah <- read_sf(long_geojson_string)
 ```
 
 ## {.center}
@@ -100,28 +142,24 @@ slco <- read_sf(long_geojson_string)
 Get US Census TIGER/line data
 
 ```{r}
+#| label: arcgislayers-full-example
 library(arcgislayers)
 
 # connect to a map service
-url <- file.path(
-  "https://tigerweb.geo.census.gov",
-  "arcgis/rest/services",
-  "TIGERweb/State_County/MapServer/1"
-)
-
 service <- arc_open(url)
 
 # write and execute http request
-slco <- arc_select(service, where = "BASENAME='Salt Lake'")
+utah <- arc_select(service, where = "NAME='Utah'")
 ```
 
-## `arcgislayers` returns `sf`
+## Querying a `<FeatureLayer>` returns `sf`
 
 ```{r}
-slco[c("STATE", "BASENAME")]
+#| label: arcgislayers-return
+utah[c("STATE", "NAME")]
 ```
 
-## [Why care?]{.soft-white .georgia .big-font} {.center data-background-color="#0c0c0c" }
+# [Why care?]{.soft-white .georgia .big-font} {.center data-background-color="#0c0c0c" }
 
 ## Focus on remote access...
 
@@ -146,46 +184,9 @@ since getting the data is as simple as `source("salt-lake.R")`*.
 
 ## But also money!
 
-## [HTTP requests?]{.soft-white .georgia .big-font} {.center data-background-color="#0c0c0c" }
-
-## URL components
-
-```{r}
-library(httr2)
-
-url <- file.path(
-  "https://tigerweb.geo.census.gov",
-  "arcgis/rest/services",
-  "TIGERweb/State_County/MapServer/0"
-)
-
-url_parse(url)
-```
-
-## AGOL specifics
-
-```{r}
-service <- arc_open(url)
-service
-```
-
-## Building queries
-
-```{r}
-req <- request(service[["url"]])
-
-# append queries to endpoint url
-req |> req_url_query(where = "NAME='Utah'", fields = "NAME")
-
-# insert queries into request body
-req |> req_body_form(where = "NAME='Utah'", fields = "NAME")
-```
-
-When we pass the service information to `arc_select()` with arguments, it helps 
-us build a url query string with `req_url_query()` and then sends that request 
-to the service endpoint.
-
-## [Arguments to `arc_select()`]{.soft-white .georgia .big-font} {.center data-background-color="#0c0c0c" }
+# [Arguments to `arc_select()`]{.soft-white .georgia} {data-background-color="#0c0c0c" }
+When we pass query parameters, `arc_select()` helps us build a url query string 
+and then sends that request to the service endpoint.
 
 ## `fields` for column selection
 
@@ -200,6 +201,7 @@ names(states)
 ## `where` for SQL queries
 
 ```{r}
+#| label: arc-select-where
 intermountain <- arc_select(service, where = "NAME IN ('Utah', 'Nevada')")
 
 intermountain[["NAME"]]
@@ -219,6 +221,7 @@ st_crs(states)$epsg
 ## `geometry` for returning geometry
 
 ```{r}
+#| label: arc-select-geometry
 state_attributes <- arc_select(service, geometry = FALSE)
 
 state_attributes[c("STATE", "NAME")]
@@ -227,18 +230,18 @@ state_attributes[c("STATE", "NAME")]
 ## `filter_geom` for spatial filters
 
 ```{r}
-# basins (huc6) of utah
+#| label: arc-select-filter_geom
+# watershed boundaries database service
 wbd_url <- file.path(
   "https://hydrowfs.nationalmap.gov",
-  "arcgis/rest/services",
-  "wbd/MapServer/3"
+  "arcgis/rest/services/wbd/MapServer/3"
 )
 
-# watershed boundaries database service
 wbd <- arc_open(wbd_url)
 
 utah <- states |> subset(NAME == "Utah")
 
+# basins (huc6) of utah
 basins <- arc_select(wbd, filter_geom = st_geometry(utah))
 
 basins[["name"]]
@@ -257,7 +260,3 @@ basins <- arc_select(
 basins[["name"]]
 #> [1] "Jordan"
 ```
-
-::: {.absolute bottom=10 style="color: #829399; font-size: 22px;"}
-\* This actually doesn't work. There's a bug in how the predicate is applied.
-:::
