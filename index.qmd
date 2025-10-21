@@ -185,6 +185,22 @@ since getting the data is as simple as `source("utah.R")`*.
 
 ## But also money!
 
+Modest costs:
+
+> In fiscal year (FY) 2022, the combined budget request for all the major 
+statistical agencies and other statistical programs in federal agencies 
+(including the decennial census, economic, and agricultural censuses) totaled 
+$7.1 billion. This amounted to about 0.03 percent of GDP.
+
+For significant ROI:
+
+> A recent publication from the Department of Commerce estimates the value of 
+government data-intensive sector as $407.9 billion in 2012 rapidly growing to 
+$778.0 billion in 2022. 
+
+Source: NASEM. 2025. Principles and Practices for a Federal Statistical Agency: 
+Eighth Edition. <https://doi.org/10.17226/27934>.
+
 # [Arguments to `arc_select()`]{.soft-white .georgia} {data-background-color="#0c0c0c" }
 When we pass query parameters, `arc_select()` helps us build a url query string 
 and then sends that request to the service endpoint.
@@ -265,3 +281,124 @@ basins <- arc_select(
 basins[["name"]]
 #> [1] "Jordan"
 ```
+
+# [What about `rasters`?]{.soft-white .georgia .big-font} {.center data-background-color="#0c0c0c" }
+The answer is `yes`.
+
+## `arc_raster()`
+
+```{r}
+#| label: arc-raster
+url <- file.path(
+  "https://elevation.nationalmap.gov",
+  "arcgis/rest/services/3DEPElevation/ImageServer"
+)
+
+gs3dep <- arc_open(url)
+
+gsl <- basins |>
+  subset(name == "Great Salt Lake") |>
+  st_transform(st_crs(gs3dep))
+
+bb8 <- st_bbox(gsl)
+
+dx <- diff(bb8[c("xmin", "xmax")])
+dy <- diff(bb8[c("ymin", "ymax")])
+
+dem <- arc_raster(
+  gs3dep,
+  xmin = bb8[["xmin"]],
+  xmax = bb8[["xmax"]],
+  ymin = bb8[["ymin"]],
+  ymax = bb8[["ymax"]],
+  width = 1000,
+  height = round(1000 * (dy / dx) / 100) * 100
+)
+```
+
+## Result
+
+```{r}
+#| label: terra-plot-eval
+#| include: false
+library(magick)
+
+prepare_image <- function(x, dx = 0, dy = 0, color = "white") {
+  img <- image_read(path = x)
+
+  img <- image_trim(img)
+
+  info <- image_info(img)
+
+  new_width <- info[["width"]] + dx
+  new_height <- info[["height"]] + dy
+
+  img <- image_extent(
+    img,
+    geometry_area(new_width, new_height),
+    color = color
+  )
+
+  image_write(img, path = x)
+}
+
+library(terra)
+
+png("figures/dem.png", width = 5, height = 7.5, units = "in", res = 300)
+par(mar = c(0, 0, 0, 0), oma = c(0, 0, 0, 0))
+plot(dem)
+plot(
+  st_geometry(gsl),
+  add = TRUE,
+  color = "transparent",
+  border = "white",
+  lwd = 3
+)
+dev.off()
+
+prepare_image("figures/dem.png")
+```
+
+:::::: {.columns}
+::: {.column width="40%"}
+
+```{r}
+#| label: terra-plot
+#| eval: false
+library(terra)
+
+plot(dem)
+plot(
+  st_geometry(gsl),
+  add = TRUE,
+  color = "transparent",
+  border = "white",
+  lwd = 3
+)
+```
+
+:::
+::: {.column width="50%"}
+::: {.dumb-p-tag style="width: 80%; margin: 0 auto;"}
+
+<img src="figures/dem.png">
+
+:::
+:::
+::::::
+
+# [Conclusion]{.soft-white .georgia .big-font} {.center data-background-color="#0c0c0c" }
+
+## `arcgislayers` is excellent for querying AGOL {.center}
+
+## `arcgislayers` also offers write access {.center}
+
+Can publish to AGOL, so you can share scripts and your own data.
+
+## Federal spatial datasets are everywhere {.center}
+
+USGS, EPA, NOAA, USDA, USFS, BLM, NPS, Census, etc.
+
+## With additional endpoints through other APIs {.center}
+
+Once you understand the process, it is straightforward to access it with `httr2`.

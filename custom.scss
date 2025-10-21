@@ -27,3 +27,13 @@ $presentation-line-height: 1.2;
 .georgia {
     font-family: Georgia !important;
 }
+
+.dumb-p-tag {
+    p {
+        margin: 0;
+    }
+
+    img {
+        margin: 0;
+    }
+}

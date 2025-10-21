@@ -95,7 +95,7 @@
     code span.vs { color: #008000; } /* VerbatimString */
     code span.wa { color: #696969; font-style: italic; } /* Warning */
   </style>
-  <link rel="stylesheet" href="index_files/libs/revealjs/dist/theme/quarto-c2bd70c07adafa91a376b44f9570f916.css">
+  <link rel="stylesheet" href="index_files/libs/revealjs/dist/theme/quarto-aaabf4ea96c076c291db090cba00d155.css">
   <link href="index_files/libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
   <link href="index_files/libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
   <link href="index_files/libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
@@ -369,6 +369,15 @@ since getting the data is as simple as <code>source("utah.R")</code>*.</p>
 </section>
 <section id="but-also-money" class="slide level2">
 <h2>But also money!</h2>
+<p>Modest costs:</p>
+<blockquote>
+<p>In fiscal year (FY) 2022, the combined budget request for all the major statistical agencies and other statistical programs in federal agencies (including the decennial census, economic, and agricultural censuses) totaled $7.1 billion. This amounted to about 0.03 percent of GDP.</p>
+</blockquote>
+<p>For significant ROI:</p>
+<blockquote>
+<p>A recent publication from the Department of Commerce estimates the value of government data-intensive sector as $407.9 billion in 2012 rapidly growing to $778.0 billion in 2022.</p>
+</blockquote>
+<p>Source: NASEM. 2025. Principles and Practices for a Federal Statistical Agency: Eighth Edition. <a href="https://doi.org/10.17226/27934" class="uri">https://doi.org/10.17226/27934</a>.</p>
 </section></section>
 <section>
 <section id="arguments-to-arc_select" class="title-slide slide level1 center" data-background-color="#0c0c0c">
@@ -448,6 +457,83 @@ since getting the data is as simple as <code>source("utah.R")</code>*.</p>
 <span id="cb11-7"><a href="" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb11-8"><a href="" aria-hidden="true" tabindex="-1"></a>basins[[<span class="st">"name"</span>]]</span>
 <span id="cb11-9"><a href="" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] "Jordan"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section></section>
+<section>
+<section id="what-about-rasters" class="title-slide slide level1 center" data-background-color="#0c0c0c">
+<h1><span class="soft-white georgia big-font">What about <code>rasters</code>?</span></h1>
+<p>The answer is <code>yes</code>.</p>
+</section>
+<section id="arc_raster" class="slide level2">
+<h2><code>arc_raster()</code></h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="" aria-hidden="true" tabindex="-1"></a>url <span class="ot">&lt;-</span> <span class="fu">file.path</span>(</span>
+<span id="cb12-2"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="st">"https://elevation.nationalmap.gov"</span>,</span>
+<span id="cb12-3"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="st">"arcgis/rest/services/3DEPElevation/ImageServer"</span></span>
+<span id="cb12-4"><a href="" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb12-5"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-6"><a href="" aria-hidden="true" tabindex="-1"></a>gs3dep <span class="ot">&lt;-</span> <span class="fu">arc_open</span>(url)</span>
+<span id="cb12-7"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-8"><a href="" aria-hidden="true" tabindex="-1"></a>gsl <span class="ot">&lt;-</span> basins <span class="sc">|&gt;</span></span>
+<span id="cb12-9"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="fu">subset</span>(name <span class="sc">==</span> <span class="st">"Great Salt Lake"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-10"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_transform</span>(<span class="fu">st_crs</span>(gs3dep))</span>
+<span id="cb12-11"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-12"><a href="" aria-hidden="true" tabindex="-1"></a>bb8 <span class="ot">&lt;-</span> <span class="fu">st_bbox</span>(gsl)</span>
+<span id="cb12-13"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-14"><a href="" aria-hidden="true" tabindex="-1"></a>dx <span class="ot">&lt;-</span> <span class="fu">diff</span>(bb8[<span class="fu">c</span>(<span class="st">"xmin"</span>, <span class="st">"xmax"</span>)])</span>
+<span id="cb12-15"><a href="" aria-hidden="true" tabindex="-1"></a>dy <span class="ot">&lt;-</span> <span class="fu">diff</span>(bb8[<span class="fu">c</span>(<span class="st">"ymin"</span>, <span class="st">"ymax"</span>)])</span>
+<span id="cb12-16"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-17"><a href="" aria-hidden="true" tabindex="-1"></a>dem <span class="ot">&lt;-</span> <span class="fu">arc_raster</span>(</span>
+<span id="cb12-18"><a href="" aria-hidden="true" tabindex="-1"></a>  gs3dep,</span>
+<span id="cb12-19"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="at">xmin =</span> bb8[[<span class="st">"xmin"</span>]],</span>
+<span id="cb12-20"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="at">xmax =</span> bb8[[<span class="st">"xmax"</span>]],</span>
+<span id="cb12-21"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="at">ymin =</span> bb8[[<span class="st">"ymin"</span>]],</span>
+<span id="cb12-22"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="at">ymax =</span> bb8[[<span class="st">"ymax"</span>]],</span>
+<span id="cb12-23"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="at">width =</span> <span class="dv">1000</span>,</span>
+<span id="cb12-24"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="at">height =</span> <span class="fu">round</span>(<span class="dv">1000</span> <span class="sc">*</span> (dy <span class="sc">/</span> dx) <span class="sc">/</span> <span class="dv">100</span>) <span class="sc">*</span> <span class="dv">100</span></span>
+<span id="cb12-25"><a href="" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="result" class="slide level2">
+<h2>Result</h2>
+<div class="columns">
+<div class="column" style="width:40%;">
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(terra)</span>
+<span id="cb13-2"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(dem)</span>
+<span id="cb13-4"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(</span>
+<span id="cb13-5"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_geometry</span>(gsl),</span>
+<span id="cb13-6"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="at">add =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb13-7"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="at">color =</span> <span class="st">"transparent"</span>,</span>
+<span id="cb13-8"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="at">border =</span> <span class="st">"white"</span>,</span>
+<span id="cb13-9"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="at">lwd =</span> <span class="dv">3</span></span>
+<span id="cb13-10"><a href="" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div><div class="column" style="width:50%;">
+<div class="dumb-p-tag" style="width: 80%; margin: 0 auto;">
+<p><img src="figures/dem.png"></p>
+</div>
+</div></div>
+</section></section>
+<section>
+<section id="conclusion" class="title-slide slide level1 center" data-background-color="#0c0c0c">
+<h1><span class="soft-white georgia big-font">Conclusion</span></h1>
+
+</section>
+<section id="arcgislayers-is-excellent-for-querying-agol" class="slide level2 center">
+<h2><code>arcgislayers</code> is excellent for querying AGOL</h2>
+</section>
+<section id="arcgislayers-also-offers-write-access" class="slide level2 center">
+<h2><code>arcgislayers</code> also offers write access</h2>
+<p>Can publish to AGOL, so you can share scripts and your own data.</p>
+</section>
+<section id="federal-spatial-datasets-are-everywhere" class="slide level2 center">
+<h2>Federal spatial datasets are everywhere</h2>
+<p>USGS, EPA, NOAA, USDA, USFS, BLM, NPS, Census, etc.</p>
+</section>
+<section id="with-additional-endpoints-through-other-apis" class="slide level2 center">
+<h2>With additional endpoints through other APIs</h2>
+<p>Once you understand the process, it is straightforward to access it with <code>httr2</code>.</p>
 
 </section></section>
     </div>
